@@ -1,0 +1,19 @@
+<html lang="en">
+<head>
+    {% csrf_token %}
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div style="width: 100%; height: 4em; text-align: center; border: 3px solid rebeccapurple;">  
+        {%if name%}
+        <title style="display: inline-block; font-size: 3em; color: aqua;"> Welcome {{name}}</title> 
+        {%else%}
+        <title style="display: inline-block; font-size: 3em; color: aqua;"> Welcome World!</title> 
+        {%endif%}
+    </div>
+    
+</body>
+</html>
