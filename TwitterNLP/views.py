@@ -22,75 +22,128 @@ def test(req):
     return HttpResponse('Hello World!')
 
 class Analize(TemplateView):
-
     @csrf_exempt
     def TwitterSearch(req):
         if req.method == "POST":
             #get the query from the request
-            query = decode(req.body, 'utf-8')
+            request = decode(req.body, 'utf-8')
+            request = json.loads(request)
+
+            lang = request['lan']
+            query = request['query']
+            print(f"Search Query: {query}")
+            #if query is empty
+            if query.isspace(): 
+                return HttpResponse("Bad Request!", status=400, content_type='text/plain')
             #web encode the search term i.e replace spaces with %20
             query_P = urllib.parse.quote(query)
-            print(f"Search Query: {query}")
+            #web encode the search term i.e replace spaces with %20
+            query_P = urllib.parse.quote(query)
+            # print(f"Search Query: {query}")
             #first env 'dev' for 30day search
-            recent = "https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={} lang:en".format(query_P)
+            recentURL = f"https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={query_P} lang:{lang}"
             #second env 'twitterReviews' for full archive search
-            fullarchive = "https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={} lang:en".format(query_P)
+            fullarchiveURL = f"https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={query_P} lang:{lang}" #&next=eyJtYXhJZCI6MTQ2MjA2NDQwMDE1MjY0NTYzNH0=
             #search for popular tweet
-            popular = 'https://api.twitter.com/1.1/search/tweets.json?q={}&lang=en&result_type=popular&tweet_mode=extended'.format(query_P)
+            popularURL = f'https://api.twitter.com/1.1/search/tweets.json?q={query_P}&lang={lang}&result_type=popular&tweet_mode=extended'
             #Twitter api v2 recent search 
-            apiV2 = 'https://api.twitter.com/2/tweets/search/recent?query={} lang:en&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified'.format(query_P)
-            
+            apiV2URL = f'https://api.twitter.com/2/tweets/search/recent?query={query_P} lang:{lang}&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified'
+
             # first env 'dev' Bearer Token
             headers = {
             'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAACsx%2BQAAAAAA2%2F9Onm5ZIzMJotHeoJQpCFtJV10%3DSK9tQfBsNZirwauxiFzDXl80sB7M0xMGLaAbtGZkhReYFBA1Rz',
-            "Cookie" : "guest_id=v1%3A163404759089649456; personalization_id=\"v1_mWi0bYRg8/9gZ1RFNq6UhQ==\""
             }
             # second env 'twitterReviews' Bearer Token
             headers1 = {
             'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAAJKAVgEAAAAAlJpPjhiR6zoOkW9kX4Z3mybV568%3DZUS51isbSfpuSiLJGFDXY0woi6sXyRDiCQCeIOhoxfwzcFhGNS',
-            "Cookie" : "guest_id=v1%3A163404759089649456; personalization_id=\"v1_mWi0bYRg8/9gZ1RFNq6UhQ==\""
             }
 
-            #make recent and full archive search
-            # fetchTwitter = []
-            popularSearch = requests.request("GET", popular, headers=headers1)
-            # fetchTwitter.append(requests.request("GET", url, headers=headers))
-            # tweets = []
-            tweets = json.loads(HttpResponse(popularSearch).content)
-            #check if the request went through 
-            if hasattr(tweets, 'error'):
-                return HttpResponse(tweets)
-            #check if the response has 'next' hash if so append it to the url
-            # if hasattr(tweets, 'next'):
-            #     for i in range(1, 5):
-            #         new_req = requests.request("GET", url+"&next={}".format(tweets[i-1]['next']), headers=headers)
-            #         tweets['results'].append(new_req['results'])
-            #         if hasattr(new_req, 'next'):
-            #             #request the next page
-            #             continue
-            #         else: 
-            #             break
+            tweetsList = []
 
-            # for response in fetchTwitter: 
-            #     results = json.loads(HttpResponse(response).content)
-            #     tweets['results'].append(results['results'])
-            #popular Search
-            print(len(tweets['statuses'])) 
-            #recent Search
-            # print(len(tweets['results'])) 
+            #make POPULAR and full archive search
+            popularSearch = requests.request("GET", popularURL, headers=headers1)
+            poptweets = json.loads(popularSearch.content)
+            if 'error' in poptweets.keys():
+                    print(poptweets["error"])
+                    # HttpResponse(poptweets["error"], content_type='application/json', status=400)
+            else:
+                tweetsList.append(poptweets["statuses"])
+
+            fullArchiveSearch = requests.request("GET", recentURL, headers=headers)
+            arctweets = json.loads(fullArchiveSearch.content)
+            if 'error' in arctweets.keys():
+                print(arctweets["error"])
+                # HttpResponse(arctweets["error"], content_type='application/json', status=400)
+            else: tweetsList.append(arctweets["results"])
+            
+            if len(tweetsList) < 1:
+                print("0 Tweets were found")
+                # return HttpResponse("No Tweet were Found", status=404, content_type='text/plain')
+            
+            print(len(tweetsList)) 
+
             calssify = {}
-            calssify['sentimment'] = analize.SNL_Twitter.analyze(query, tweets)
-            calssify['content']= tweets
+            calssify['sentimment'] = analize.SNL_Twitter.analyze(query, tweetsList, lang)
+            calssify['content']= tweetsList
             
             
-
-            # print(calssify)
-            # response = {tweets:calssify}
-            # for item in json.loads(HttpResponse(fetchTwitter).content): 
-            
-            return HttpResponse(json.dumps(calssify), content_type='application/json')
+            return HttpResponse(json.dumps(calssify), content_type='application/json', status=200)
             
         raise BadRequest('Invalid Request!')
+
+
+    def SearchTwitter(query):
+        tweetsList = []
+        next_search = ''
+        #web encode the search term i.e replace spaces with %20
+        query_P = urllib.parse.quote(query)
+        print(f"Search Query: {query}")
+        #first env 'dev' for 30day search
+        recentURL = "https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={} lang:ar".format(query_P)
+        #second env 'twitterReviews' for full archive search
+        fullarchiveURL = "https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={} lang:ar".format(query_P) #&next=eyJtYXhJZCI6MTQ2MjA2NDQwMDE1MjY0NTYzNH0=
+        #search for popular tweet
+        popularURL = 'https://api.twitter.com/1.1/search/tweets.json?q={}&lang=ar&result_type=popular&tweet_mode=extended'.format(query_P)
+        #Twitter api v2 recent search 
+        apiV2URL = 'https://api.twitter.com/2/tweets/search/recent?query={} lang:ar&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified'.format(query_P)
+
+        # first env 'dev' Bearer Token
+        headers = {
+        'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAACsx%2BQAAAAAA2%2F9Onm5ZIzMJotHeoJQpCFtJV10%3DSK9tQfBsNZirwauxiFzDXl80sB7M0xMGLaAbtGZkhReYFBA1Rz',
+        }
+        # second env 'twitterReviews' Bearer Token
+        headers1 = {
+        'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAAJKAVgEAAAAAlJpPjhiR6zoOkW9kX4Z3mybV568%3DZUS51isbSfpuSiLJGFDXY0woi6sXyRDiCQCeIOhoxfwzcFhGNS',
+        }
+
+        #make POPULAR and full archive search
+        popularSearch = requests.request("GET", popularURL, headers=headers1)
+        poptweets = json.loads(popularSearch.content)
+        if 'error' in poptweets.keys():
+                print(poptweets["error"])
+        else:
+            tweetsList.append(poptweets["statuses"])
+        
+        
+        for i in range(2):
+            if(i > 0):
+    #             fullarchiveURL = f"https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={query_P} lang:ar&next={next_search}"
+                recentURL = f"https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={query_P} lang:ar&next={next_search}"
+            fullArchiveSearch = requests.request("GET", recentURL, headers=headers)
+            arctweets = json.loads(fullArchiveSearch.content)
+            if 'error' in arctweets.keys():
+                print(arctweets["error"]); break
+            tweetsList.append(arctweets["results"])
+            next_search = arctweets["next"]
+            if ("next" in arctweets.keys() == False): break
+            time.sleep(1)
+            
+        
+        return tweetsList
+
+
+
+
 
 
     def first(req):
