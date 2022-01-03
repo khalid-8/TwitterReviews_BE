@@ -5,21 +5,26 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import BadRequest
-from .models import peaccmiddle
+from dotenv import load_dotenv
+import os
+
 # import logging
 from .MiddleWare import analize
-
-
-
-
+import datetime
+from django.utils import timezone
+from .models import userIpAddress
 
 # Create instatnce of logger
 log = logging.getLogger("django")
-# logging.basicConfig(level=logging.DEBUG)
+# load the environment variables
+load_dotenv()
+recent = os.getenv("RECENT_URL")
+fullarchive = os.getenv("FULL_ARCHIVE_URL")
+popular = os.getenv("POUPLAR_URL")
+apiV2 = os.getenv("POUPLAR_URL")
+bearer = os.getenv("FIRST_BEARER")
+second_bearer = os.getenv("SECOND_BEARER")
 
-
-def test(req):
-    return HttpResponse('Hello World!')
 
 class Analize(TemplateView):
     @csrf_exempt
@@ -32,30 +37,40 @@ class Analize(TemplateView):
             lang = request['lan']
             query = request['query']
             print(f"Search Query: {query}")
+            print(request)
             #if query is empty
             if query.isspace(): 
                 return HttpResponse("Bad Request!", status=400, content_type='text/plain')
+
+            #check for elgibilgty 
+            if (Analize.check_and_update_eligibility(request['ip_address']) == False):
+                return HttpResponse("User Exceeded Daily Limit", status=401, content_type='text/plain')
+
             #web encode the search term i.e replace spaces with %20
             query_P = urllib.parse.quote(query)
             #web encode the search term i.e replace spaces with %20
             query_P = urllib.parse.quote(query)
             # print(f"Search Query: {query}")
             #first env 'dev' for 30day search
-            recentURL = f"https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={query_P} lang:{lang}"
+            recentURL = f"{recent}query={query_P} lang:{lang}"
+            print(f"Recent URL: {recentURL}")
+
             #second env 'twitterReviews' for full archive search
-            fullarchiveURL = f"https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={query_P} lang:{lang}" #&next=eyJtYXhJZCI6MTQ2MjA2NDQwMDE1MjY0NTYzNH0=
+            fullarchiveURL = f"{fullarchive}query={query_P} lang:{lang}" #&next=eyJtYXhJZCI6MTQ2MjA2NDQwMDE1MjY0NTYzNH0=
+            
             #search for popular tweet
-            popularURL = f'https://api.twitter.com/1.1/search/tweets.json?q={query_P}&lang={lang}&result_type=popular&tweet_mode=extended'
+            popularURL = f"{popular}q={query_P}&lang={lang}&result_type=popular&tweet_mode=extended"
+        
             #Twitter api v2 recent search 
-            apiV2URL = f'https://api.twitter.com/2/tweets/search/recent?query={query_P} lang:{lang}&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified'
+            apiV2URL = f"{apiV2}query={query_P} lang:{lang}&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified"
 
             # first env 'dev' Bearer Token
             headers = {
-            'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAACsx%2BQAAAAAA2%2F9Onm5ZIzMJotHeoJQpCFtJV10%3DSK9tQfBsNZirwauxiFzDXl80sB7M0xMGLaAbtGZkhReYFBA1Rz',
+            'Authorization': bearer,
             }
             # second env 'twitterReviews' Bearer Token
             headers1 = {
-            'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAAJKAVgEAAAAAlJpPjhiR6zoOkW9kX4Z3mybV568%3DZUS51isbSfpuSiLJGFDXY0woi6sXyRDiCQCeIOhoxfwzcFhGNS',
+            'Authorization': second_bearer,
             }
 
             tweetsList = []
@@ -63,6 +78,7 @@ class Analize(TemplateView):
             #make POPULAR and full archive search
             popularSearch = requests.request("GET", popularURL, headers=headers1)
             poptweets = json.loads(popularSearch.content)
+
             if 'error' in poptweets.keys():
                     print(poptweets["error"])
                     # HttpResponse(poptweets["error"], content_type='application/json', status=400)
@@ -91,72 +107,33 @@ class Analize(TemplateView):
             
         raise BadRequest('Invalid Request!')
 
-
-    def SearchTwitter(query):
-        tweetsList = []
-        next_search = ''
-        #web encode the search term i.e replace spaces with %20
-        query_P = urllib.parse.quote(query)
-        print(f"Search Query: {query}")
-        #first env 'dev' for 30day search
-        recentURL = "https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={} lang:ar".format(query_P)
-        #second env 'twitterReviews' for full archive search
-        fullarchiveURL = "https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={} lang:ar".format(query_P) #&next=eyJtYXhJZCI6MTQ2MjA2NDQwMDE1MjY0NTYzNH0=
-        #search for popular tweet
-        popularURL = 'https://api.twitter.com/1.1/search/tweets.json?q={}&lang=ar&result_type=popular&tweet_mode=extended'.format(query_P)
-        #Twitter api v2 recent search 
-        apiV2URL = 'https://api.twitter.com/2/tweets/search/recent?query={} lang:ar&tweet.fields=id,text,lang,public_metrics&max_results=10&user.fields=id,description,created_at,username,profile_image_url,verified'.format(query_P)
-
-        # first env 'dev' Bearer Token
-        headers = {
-        'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAACsx%2BQAAAAAA2%2F9Onm5ZIzMJotHeoJQpCFtJV10%3DSK9tQfBsNZirwauxiFzDXl80sB7M0xMGLaAbtGZkhReYFBA1Rz',
-        }
-        # second env 'twitterReviews' Bearer Token
-        headers1 = {
-        'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAAJKAVgEAAAAAlJpPjhiR6zoOkW9kX4Z3mybV568%3DZUS51isbSfpuSiLJGFDXY0woi6sXyRDiCQCeIOhoxfwzcFhGNS',
-        }
-
-        #make POPULAR and full archive search
-        popularSearch = requests.request("GET", popularURL, headers=headers1)
-        poptweets = json.loads(popularSearch.content)
-        if 'error' in poptweets.keys():
-                print(poptweets["error"])
-        else:
-            tweetsList.append(poptweets["statuses"])
-        
-        
-        for i in range(2):
-            if(i > 0):
-    #             fullarchiveURL = f"https://api.twitter.com/1.1/tweets/search/fullarchive/twitterReviews.json?query={query_P} lang:ar&next={next_search}"
-                recentURL = f"https://api.twitter.com/1.1/tweets/search/30day/dev.json?query={query_P} lang:ar&next={next_search}"
-            fullArchiveSearch = requests.request("GET", recentURL, headers=headers)
-            arctweets = json.loads(fullArchiveSearch.content)
-            if 'error' in arctweets.keys():
-                print(arctweets["error"]); break
-            tweetsList.append(arctweets["results"])
-            next_search = arctweets["next"]
-            if ("next" in arctweets.keys() == False): break
-            time.sleep(1)
-            
-        
-        return tweetsList
-
-
-
-
-
-
-    def first(req):
-        # log.warning("Wrong URL")
-        # data = 'oc2093'
-        return render(req, 'first.html', {'name': 'Ahmed'})
-        # return HttpResponse('Hello World!')
-
     
+    #check if the user didn't exceed the number of searches (3 per user) using their IP address
+    def check_and_update_eligibility(ip): 
+        DBobject = userIpAddress.objects.filter(ip_address=ip)
+        # ip exist in the DB
+        if (DBobject):
+            num_req = DBobject.values("number_of_requests").first()["number_of_requests"]
+            # print("******************************")
+            # print()
+            #number of requests exceeded the daily limit
+            if (num_req == 3):
+                return False
+            #otherwise update the number of requests 
+            DBobject.update(number_of_requests= num_req+1) 
+            return True
+        #if the ip dosen't exist in the DB add it
+        add_User_IpAddress(ip)
+        return True
+        #if(DBobject):
+            
 
 
+def add_User_IpAddress(ip_add):
+    # Create an instance of foo with expiration date now + one day
+    ipModel = userIpAddress(
+        ip_address = ip_add,
+        expiration_date=timezone.now() + datetime.timedelta(days=1))
 
-##new APP
-# Bearer AAAAAAAAAAAAAAAAAAAAAJKAVgEAAAAAlJpPjhiR6zoOkW9kX4Z3mybV568%3DZUS51isbSfpuSiLJGFDXY0woi6sXyRDiCQCeIOhoxfwzcFhGNS
-## key I1OTsG6u3zD1jrP3s32AgHuAH
-### sec O8bk3Dc3XbxjPBgj2VZK4JTIQeyVj7ME4mli3wAFI4JC7cGvvm
+    ipModel.save()
+    # objects.create()
