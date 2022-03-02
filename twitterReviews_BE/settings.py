@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'TwitterNLP',
     'debug_toolbar',
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [
