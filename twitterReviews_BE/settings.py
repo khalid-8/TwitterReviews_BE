@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'corsheaders',
     'TwitterNLP',
+    'import_export',
     'debug_toolbar',
     'django_apscheduler',
 ]

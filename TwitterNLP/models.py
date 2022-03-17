@@ -11,14 +11,15 @@ class tweets_sentiment(models.Model):
     postive_tweets = JSONField()
     negative_tweets = JSONField()
     charts_graph = models.ImageField(blank=True)
-    line_graph = models.ImageField(blank=True)
+    # line_graph = models.ImageField(blank=True)
     pie_graph = models.ImageField(blank=True)
+    expiration_date = models.DateTimeField()
 
 
 class userIpAddress(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     ip_address = models.CharField(max_length=20)
     number_of_requests = models.IntegerField(default=1, blank=True)
-    expiration_date = models.DateTimeField()
+    expiration_date = models.DateTimeField(default=None)
 
 
