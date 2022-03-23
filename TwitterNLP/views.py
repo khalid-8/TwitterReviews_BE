@@ -102,13 +102,15 @@ class Analize(TemplateView):
             if len(tweetsList) < 1:
                 print("0 Tweets were found")
                 # return HttpResponse("No Tweet were Found", status=404, content_type='text/plain')
-            
+            else:
+                tweetsList = tweetsList[0] + tweetsList[1]
+
             print(len(tweetsList)) 
 
             # calssify = {}
             # calssify['sentimment'] = analize.SNL_Twitter.analyze(query, tweetsList, lang)
             # calssify['content']= tweetsList
-            calssify = analize.SNL_Twitter.analyze(query, tweetsList[1], lang)
+            calssify = analize.SNL_Twitter.analyze(query, tweetsList, lang)
 
             return HttpResponse(json.dumps(calssify, indent=4, sort_keys=True, default=str), content_type='application/json', status=200)
             

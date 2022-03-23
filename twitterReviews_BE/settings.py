@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+from xmlrpc.client import FastMarshaller
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,8 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$y25b&ro4^al^gc03zbvkhn1y5alo-2)+f7ihk8xc82_)pm$+o'
-
+# SECRET_KEY = 'django-insecure-$y25b&ro4^al^gc03zbvkhn1y5alo-2)+f7ihk8xc82_)pm$+o'
+with open(os.path.join(BASE_DIR, 'secret_key.txt')) as f:
+    SECRET_KEY = f.read().strip()
+# coustom = "1^=k*o_^5nr3m4uwq$x*i&(loi7619i_0$l02eubkqcwuf9m-!"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -45,7 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'corsheaders',
     'TwitterNLP',
-    'import_export',
+    # 'import_export',
     'debug_toolbar',
     'django_apscheduler',
 ]
@@ -146,3 +149,14 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# HTTPS settings
+# SESSION_COOKIE_SECURE = False
+# CSRF_COOKIE_SECURE = False
+# SECURE_SSL_REDIRECT = False
+
+# # HSTS settings
+# SECURE_HSTS_SECONDS = 31536000 #1 year
+# SECURE_HSTS_PRELOAD = True
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
